@@ -1,0 +1,39 @@
+import { User } from '../models/user.model';
+import { UserRepository } from '../repositories/user.repository';
+import { repository } from '@loopback/repository';
+import { HttpErrors } from '@loopback/rest';
+import { inject } from '@loopback/core';
+import { BcryptHasher } from './hash.password.bcrypt';
+import { PasswordHasherBindings } from '../keys';
+
+export class MyCustomUserService {
+
+    constructor(@repository(UserRepository) public userRepository: UserRepository, @inject(PasswordHasherBindings.PASSWORD_HASHER) public hasher: BcryptHasher
+    ) {}
+
+    async verifyPassword(username:string,password:string): Promise<User> {
+        
+        const foundUser:User|null = await this.userRepository.findOne({
+            where: {
+                username
+            }
+        });
+    
+        if (!foundUser) {
+          
+            throw new HttpErrors.NotFound(`user not found with this ${username}`);
+        }
+        const passwordMatched = await this.hasher.comparePassword(password, foundUser.password);
+    
+        if (!passwordMatched) {
+        
+            throw new HttpErrors.Unauthorized('Password doesnt matches');
+        }
+        
+        return foundUser;
+    
+    }
+ 
+    
+
+}
